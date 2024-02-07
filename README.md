@@ -26,7 +26,7 @@ pip install -U https://download.pytorch.org/whl/cu113/torch-1.12.0%2Bcu113-cp310
 pip install -U deepspeed
 
 # git clone this repo
-cd ml_mgie
+cd ml-mgie
 git submodule update --init --recursive
 cd LLaVA
 pip install -e .
