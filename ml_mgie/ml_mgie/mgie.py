@@ -1,25 +1,28 @@
-import os
-import torch
-from typing import Tuple
 from dataclasses import dataclass
-from tqdm.auto import tqdm
+from pathlib import Path
 
-from PIL import Image
-
-import transformers
 import diffusers
+import torch
+import transformers
+
+from .base import DEFAULT_DEVICE
+from .mgie_llava import LlavaLlamaForCausalLM
 
 # from llava.conversation import conv_templates
 # from llava.model import *
 
-from .mgie_llava import LlavaLlamaForCausalLM
-from .base import DEFAULT_DEVICE
 
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_IMAGE_PATCH_TOKEN = "<im_patch>"
 DEFAULT_IM_START_TOKEN = "<im_start>"
 DEFAULT_IM_END_TOKEN = "<im_end>"
-PATH_LLAVA = "./_ckpt/LLaVA-7B-v1"
+PATH_LLAVA = Path("./_ckpt/LLaVA-7B-v1")
+PATH_MLLM = Path("./_ckpt/mgie_7b/mllm.pt")
+PATH_UNET = Path("./_ckpt/mgie_7b/unet.pt")
+
+assert PATH_LLAVA.exists()
+assert PATH_MLLM.exists()
+assert PATH_UNET.exists()
 
 
 @dataclass
@@ -28,27 +31,20 @@ class MGIEParams:
 
 
 class MGIE:
-    def __init__(self, params: MGIEParams) -> None:
+    def __init__(self, params: MGIEParams = MGIEParams()) -> None:
         self.params = params
         self.tokenizer: transformers.AutoTokenizer = None
         self.model: LlavaLlamaForCausalLM = None
         self.image_processor: transformers.CLIPImageProcessor = None
         self.image_token_len: int = None
         self.emb: torch.Tensor = None
-        self._get_model()
+        self._set_model()
         self.pipe = self._get_pipe()
 
-    def _get_model(
-        self,
-    ) -> Tuple[
-        LlavaLlamaForCausalLM,
-        transformers.AutoTokenizer,
-        transformers.CLIPImageProcessor,
-        int,
-    ]:
+    def _set_model(self):
         tokenizer = transformers.AutoTokenizer.from_pretrained(PATH_LLAVA)
         model = LlavaLlamaForCausalLM.from_pretrained(
-            PATH_LLAVA,
+            PATH_LLAVA.absolute(),
             low_cpu_mem_usage=True,
             torch_dtype=torch.float16,
             use_cache=True,
@@ -72,7 +68,7 @@ class MGIE:
             special_tokens=True,
         )
         model.resize_token_embeddings(len(tokenizer))
-        ckpt = torch.load("./_ckpt/mgie_7b/mllm.pt", map_location="cpu")  # TO DEVICE?
+        ckpt = torch.load(PATH_MLLM, map_location="cpu")  # TO DEVICE?
         model.load_state_dict(ckpt, strict=False)
 
         mm_use_im_start_end = getattr(model.config, "mm_use_im_start_end", False)
@@ -95,35 +91,37 @@ class MGIE:
         )[0]
         vision_config.use_im_start_end = mm_use_im_start_end
         if mm_use_im_start_end:
-            vision_config.im_start_token, vision_config.im_end_token = (
-                tokenizer.convert_tokens_to_ids(
-                    [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN]
-                )
+            (
+                vision_config.im_start_token,
+                vision_config.im_end_token,
+            ) = tokenizer.convert_tokens_to_ids(
+                [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN]
             )
-        image_token_len: int = (
-            vision_config.image_size // vision_config.patch_size
-        ) ** 2
+        image_token_len = (vision_config.image_size // vision_config.patch_size) ** 2
 
-        _ = model.eval()
-        EMB = ckpt["emb"].to(self.params.device)
+        # model = model.to(self.params.device)
+        model.eval()
+        emb = ckpt["emb"].to(self.params.device)
         with torch.inference_mode():
-            NULL = model.edit_head(
-                torch.zeros(1, 8, 4096).half().to(self.params.device), EMB
+            null = model.edit_head(
+                torch.zeros(1, 8, 4096, device=self.params.device, dtype=torch.float16),
+                emb,
             )
-        print("NULL:", NULL.shape)
+        print("NULL:", null.shape)
         self.model = model
         self.tokenizer = tokenizer
         self.image_processor = image_processor
         self.image_token_len = image_token_len
-        self.emb = EMB
-        self.null = NULL
+        self.emb = emb
+        self.null = null
 
     def _get_pipe(self) -> diffusers.StableDiffusionInstructPix2PixPipeline:
         pipe = diffusers.StableDiffusionInstructPix2PixPipeline.from_pretrained(
-            "timbrooks/instruct-pix2pix", torch_dtype=T.float16, safety_checker=None
-        ).to("cuda")
+            "timbrooks/instruct-pix2pix",
+            torch_dtype=torch.float16,  # , safety_checker=None
+        ).to(self.params.device)
         pipe.set_progress_bar_config(disable=True)
         pipe.unet.load_state_dict(
-            torch.load("./_ckpt/mgie_7b/unet.pt", map_location="cpu")
+            torch.load(PATH_UNET, map_location="cpu")
         )  # TO DEVICE?
         return pipe

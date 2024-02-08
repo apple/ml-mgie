@@ -1,10 +1,11 @@
 import dataclasses
-from enum import auto, Enum
-from typing import List, Tuple
+from enum import Enum, auto
+from typing import List
 
 
 class SeparatorStyle(Enum):
     """Different separator style."""
+
     SINGLE = auto()
     TWO = auto()
     MPT = auto()
@@ -13,6 +14,7 @@ class SeparatorStyle(Enum):
 @dataclasses.dataclass
 class Conversation:
     """A class that keeps all conversation history."""
+
     system: str
     roles: List[str]
     messages: List[List[str]]
@@ -64,33 +66,43 @@ class Conversation:
 
     def get_images(self, return_pil=False):
         images = []
-        for i, (role, msg) in enumerate(self.messages[self.offset:]):
+        for i, (role, msg) in enumerate(self.messages[self.offset :]):
             if i % 2 == 0:
                 if type(msg) is tuple:
                     import base64
                     from io import BytesIO
+
                     from PIL import Image
+
                     msg, image, image_process_mode = msg
                     if image_process_mode == "Pad":
+
                         def expand2square(pil_img, background_color=(122, 116, 104)):
                             width, height = pil_img.size
                             if width == height:
                                 return pil_img
                             elif width > height:
-                                result = Image.new(pil_img.mode, (width, width), background_color)
+                                result = Image.new(
+                                    pil_img.mode, (width, width), background_color
+                                )
                                 result.paste(pil_img, (0, (width - height) // 2))
                                 return result
                             else:
-                                result = Image.new(pil_img.mode, (height, height), background_color)
+                                result = Image.new(
+                                    pil_img.mode, (height, height), background_color
+                                )
                                 result.paste(pil_img, ((height - width) // 2, 0))
                                 return result
+
                         image = expand2square(image)
                     elif image_process_mode == "Crop":
                         pass
                     elif image_process_mode == "Resize":
                         image = image.resize((224, 224))
                     else:
-                        raise ValueError(f"Invalid image_process_mode: {image_process_mode}")
+                        raise ValueError(
+                            f"Invalid image_process_mode: {image_process_mode}"
+                        )
                     max_hw, min_hw = max(image.size), min(image.size)
                     aspect_ratio = max_hw / min_hw
                     max_len, min_len = 800, 400
@@ -113,11 +125,12 @@ class Conversation:
 
     def to_gradio_chatbot(self):
         ret = []
-        for i, (role, msg) in enumerate(self.messages[self.offset:]):
+        for i, (role, msg) in enumerate(self.messages[self.offset :]):
             if i % 2 == 0:
                 if type(msg) is tuple:
                     import base64
                     from io import BytesIO
+
                     msg, image, image_process_mode = msg
                     max_hw, min_hw = max(image.size), min(image.size)
                     aspect_ratio = max_hw / min_hw
@@ -135,7 +148,7 @@ class Conversation:
                     image.save(buffered, format="JPEG")
                     img_b64_str = base64.b64encode(buffered.getvalue()).decode()
                     img_str = f'<img src="data:image/png;base64,{img_b64_str}" alt="user upload image" />'
-                    msg = msg.replace('<image>', img_str)
+                    msg = msg.replace("<image>", img_str)
                 ret.append([msg, None])
             else:
                 ret[-1][-1] = msg
@@ -149,14 +162,17 @@ class Conversation:
             offset=self.offset,
             sep_style=self.sep_style,
             sep=self.sep,
-            sep2=self.sep2)
+            sep2=self.sep2,
+        )
 
     def dict(self):
         if len(self.get_images()) > 0:
             return {
                 "system": self.system,
                 "roles": self.roles,
-                "messages": [[x, y[0] if type(y) is tuple else y] for x, y in self.messages],
+                "messages": [
+                    [x, y[0] if type(y) is tuple else y] for x, y in self.messages
+                ],
                 "offset": self.offset,
                 "sep": self.sep,
                 "sep2": self.sep2,
@@ -173,11 +189,12 @@ class Conversation:
 
 conv_v1 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
-           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
     messages=(
         ("Human", "Give three tips for staying healthy."),
-        ("Assistant",
+        (
+            "Assistant",
             "Sure, here are three tips for staying healthy:\n"
             "1. Exercise regularly: Regular physical activity can help improve your overall health and wellbeing. "
             "It can also help reduce your risk of chronic conditions such as obesity, diabetes, heart disease, "
@@ -191,7 +208,8 @@ conv_v1 = Conversation(
             "3. Get enough sleep: Getting enough quality sleep is essential for your physical "
             "and mental health. Adults should aim for seven to nine hours of sleep per night. "
             "Establish a regular sleep schedule and try to create a relaxing bedtime routine to "
-            "help improve the quality of your sleep.")
+            "help improve the quality of your sleep.",
+        ),
     ),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
@@ -200,11 +218,15 @@ conv_v1 = Conversation(
 
 conv_v1_2 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
-           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
     messages=(
-        ("Human", "What are the key differences between renewable and non-renewable energy sources?"),
-        ("Assistant",
+        (
+            "Human",
+            "What are the key differences between renewable and non-renewable energy sources?",
+        ),
+        (
+            "Assistant",
             "Renewable energy sources are those that can be replenished naturally in a relatively "
             "short amount of time, such as solar, wind, hydro, geothermal, and biomass. "
             "Non-renewable energy sources, on the other hand, are finite and will eventually be "
@@ -222,7 +244,8 @@ conv_v1_2 = Conversation(
             "5. Flexibility: Renewable energy sources are often more flexible and can be adapted to different "
             "situations and needs, while non-renewable sources are more rigid and inflexible.\n"
             "6. Sustainability: Renewable energy sources are more sustainable over the long term, while "
-            "non-renewable sources are not, and their depletion can lead to economic and social instability.\n")
+            "non-renewable sources are not, and their depletion can lead to economic and social instability.\n",
+        ),
     ),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
@@ -280,12 +303,9 @@ conv_bair_v1 = Conversation(
 
 simple_conv = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. "
-           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
-    messages=(
-        ("Human", "Hi!"),
-        ("Assistant", "Hi there! How can I help you today?")
-    ),
+    messages=(("Human", "Hi!"), ("Assistant", "Hi there! How can I help you today?")),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
     sep="###",
@@ -293,12 +313,12 @@ simple_conv = Conversation(
 
 simple_conv_multimodal = Conversation(
     system="You are LLaVA, a large language and vision assistant trained by UW Madison WAIV Lab."
-           "You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
-           "Follow the instructions carefully and explain your answers in detail.",
+    "You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
+    "Follow the instructions carefully and explain your answers in detail.",
     roles=("Human", "Assistant"),
     messages=(
         ("Human", "Hi!"),
-        ("Assistant", "Hi there!  How can I help you today?\n")
+        ("Assistant", "Hi there!  How can I help you today?\n"),
     ),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
@@ -320,12 +340,12 @@ simple_conv_mpt_multimodal = Conversation(
 
 simple_conv_legacy = Conversation(
     system="You are LLaVA, a large language model trained by UW Madison WAIV Lab."
-           "You are designed to assist human with a variety of tasks using natural language."
-           "Follow the instructions carefully.",
+    "You are designed to assist human with a variety of tasks using natural language."
+    "Follow the instructions carefully.",
     roles=("Human", "Assistant"),
     messages=(
         ("Human", "Hi!\n\n### Response:"),
-        ("Assistant", "Hi there!  How can I help you today?\n")
+        ("Assistant", "Hi there!  How can I help you today?\n"),
     ),
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
@@ -334,8 +354,8 @@ simple_conv_legacy = Conversation(
 
 conv_llava_v1 = Conversation(
     system="You are LLaVA, a large language and vision assistant trained by UW Madison WAIV Lab."
-           "You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
-           "Follow the instructions carefully and explain your answers in detail.",
+    "You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
+    "Follow the instructions carefully and explain your answers in detail.",
     roles=("USER", "ASSISTANT"),
     version="v1",
     messages=(),
@@ -353,7 +373,6 @@ conv_templates = {
     "multimodal": simple_conv_multimodal,
     "mpt_multimodal": simple_conv_mpt_multimodal,
     "llava_v1": conv_llava_v1,
-
     # fastchat
     "v1": conv_v1_2,
     "bair_v1": conv_bair_v1,

@@ -4,35 +4,32 @@
 #
 # modified from https://github.com/haotian-liu/LLaVA/blob/7ace501183c4bdec6052ec1a30039cdc3242a67c/llava/model/llava.py
 
+import os
 from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from ml_mgie.base import DEFAULT_DEVICE
 from torch.nn import CrossEntropyLoss
-
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
-    LlamaConfig,
-    LlamaModel,
-    LlamaForCausalLM,
-    CLIPVisionModel,
     CLIPImageProcessor,
+    CLIPVisionModel,
+    LlamaConfig,
+    LlamaForCausalLM,
+    LlamaModel,
 )
-
 from transformers.modeling_outputs import (
     BaseModelOutputWithPast,
     CausalLMOutputWithPast,
 )
 
-import os, diffusers
-
 DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_IMAGE_PATCH_TOKEN = "<im_patch>"
 DEFAULT_IM_START_TOKEN = "<im_start>"
 DEFAULT_IM_END_TOKEN = "<im_end>"
-REGISTER_NAME = "mgie-llava"
+REGISTER_NAME = "llava"
 
 
 class LlavaConfig(LlamaConfig):
@@ -44,6 +41,7 @@ class LlavaLlamaModel(LlamaModel):
 
     def __init__(self, config: LlamaConfig):
         super(LlavaLlamaModel, self).__init__(config)
+        self.to_device = DEFAULT_DEVICE
 
         if hasattr(config, "mm_vision_tower"):
             # HACK: for FSDP
@@ -121,7 +119,6 @@ class LlavaLlamaModel(LlamaModel):
         images: Optional[torch.FloatTensor] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutputWithPast]:
-
         # HACK: replace back original embeddings for LLaVA pretraining
         orig_embeds_params = getattr(self, "orig_embeds_params", None)
         # if orig_embeds_params is not None:
@@ -345,7 +342,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         self.edit_head = EditMapper()
-
+        """
         self.scheduler, self.vae, self.unet = [
             diffusers.DDPMScheduler.from_pretrained(
                 "runwayml/stable-diffusion-v1-5", subfolder="scheduler"
@@ -370,7 +367,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
             conv.weight.zero_()
             conv.weight[:, :4, :, :].copy_(self.unet.conv_in.weight)
             self.unet.conv_in = conv
-
+        """
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -570,10 +567,11 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
                 [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True
             )
             self.resize_token_embeddings(len(tokenizer))
-            vision_config.im_start_token, vision_config.im_end_token = (
-                tokenizer.convert_tokens_to_ids(
-                    [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN]
-                )
+            (
+                vision_config.im_start_token,
+                vision_config.im_end_token,
+            ) = tokenizer.convert_tokens_to_ids(
+                [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN]
             )
 
             if num_new_tokens > 0:
@@ -621,5 +619,5 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
         )[0]
 
 
-AutoConfig.register(REGISTER_NAME, LlavaConfig)
-AutoModelForCausalLM.register(LlavaConfig, LlavaLlamaForCausalLM)
+AutoConfig.register(REGISTER_NAME, LlavaConfig, exist_ok=True)
+AutoModelForCausalLM.register(LlavaConfig, LlavaLlamaForCausalLM, exist_ok=True)
