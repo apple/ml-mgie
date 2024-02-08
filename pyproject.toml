@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "ml-mgie"
+packages = [
+    { include = "ml_mgie", from = "./ml_mgie" },
+    { include = "llava", from = "./LLaVa" },
+]
+version = "v0.0.0"
+description = ""
+authors = [
+    "Tsu-Jui Fu",
+    "Wenze Hu",
+    "Xianzhi Du",
+    "William Yang Wang",
+    "Yinfei Yang",
+    "Zhe Gan",
+    "Paul Asquin",       # only as package contributor
+]
+
+[build-system]
+requires = ["poetry-core", "setuptools", "setuptools-scm"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools_scm]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+torch = "^2.2.0"
+tqdm = "^4.66.1"
+transformers = "^4.37.2"
+diffusers = "^0.26.2"
+sentencepiece = "^0.1.99"
+protobuf = "^4.25.2"
+accelerate = "^0.26.1"
