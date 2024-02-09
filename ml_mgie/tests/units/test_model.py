@@ -1,19 +1,14 @@
-import torch
 from pathlib import Path
-from PIL import Image
-from ml_mgie.mgie import (
-    DEFAULT_IM_END_TOKEN,
-    DEFAULT_IM_START_TOKEN,
-    DEFAULT_IMAGE_PATCH_TOKEN,
-    MGIE,
-    MGIEParams,
-)
-from ml_mgie.utils import remove_alter
 
+import torch
+from ml_mgie.mgie import MGIE, MGIEParams
+from ml_mgie.utils import remove_alter
+from PIL import Image
 
 TEST_IMAGE_PATH = Path(__file__).parents[1] / "data/0.jpg"
 TEST_INSTRUCTION = "make the frame red"
 assert TEST_IMAGE_PATH.exists()
+# params = MGIEParams(device=torch.device("cpu"))
 params = MGIEParams()
 mgie = MGIE(params=params)
 
@@ -40,9 +35,9 @@ def test_generate():
     prompt_tensor_ids, mask = mgie.prepare_prompt_id_and_mask(instruction)
     with torch.inference_mode():
         out = mgie.model.generate(
-            prompt_tensor_ids.unsqueeze(dim=0).to(params.device),
-            images=img.half().unsqueeze(dim=0).to(params.device),
-            attention_mask=mask.unsqueeze(dim=0).to(params.device),
+            prompt_tensor_ids.unsqueeze(dim=0),
+            images=img.unsqueeze(dim=0),
+            attention_mask=mask.unsqueeze(dim=0),
             do_sample=False,
             max_new_tokens=96,
             num_beams=1,
@@ -52,4 +47,5 @@ def test_generate():
         )
         out = out["sequences"][0].tolist()
         out = remove_alter(mgie.tokenizer.decode(out))
-        assert not "Pres flash togful calledgot" in out, f"Nonesense: {out}"
+        # Ensuring no dtype-introduced nonesense MPS/torch 2.2.0: "Pres flash togful calledgot At commitilli split sent"
+        assert "The frame would be red" in out

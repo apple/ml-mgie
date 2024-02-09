@@ -1,4 +1,4 @@
-PROJECT_NAME := ml-mgie
+PROJECT_NAME := ml_mgie
 
 .PHONY: venv
 venv:

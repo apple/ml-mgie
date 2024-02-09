@@ -9,7 +9,6 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
-from ml_mgie.base import DEFAULT_DEVICE
 from torch.nn import CrossEntropyLoss
 from transformers import (
     AutoConfig,
@@ -41,7 +40,6 @@ class LlavaLlamaModel(LlamaModel):
 
     def __init__(self, config: LlamaConfig):
         super(LlavaLlamaModel, self).__init__(config)
-        self.to_device = DEFAULT_DEVICE
 
         if hasattr(config, "mm_vision_tower"):
             # HACK: for FSDP

@@ -1,26 +1,28 @@
-# TODO: add typing
-def crop_resize(f, sz=512):
-    w, h = f.size
+from PIL import Image
+
+
+def crop_resize(image: Image.Image, size: int = 512) -> Image.Image:
+    w, h = image.size
     if w > h:
         p = (w - h) // 2
-        f = f.crop([p, 0, p + h, h])
+        image = image.crop([p, 0, p + h, h])
     elif h > w:
         p = (h - w) // 2
-        f = f.crop([0, p, w, p + w])
-    f = f.resize([sz, sz])
-    return f
+        image = image.crop([0, p, w, p + w])
+    image = image.resize([size, size])
+    return image
 
 
-def remove_alter(s):  # hack expressive instruction
-    if "ASSISTANT:" in s:
-        s = s[s.index("ASSISTANT:") + 10 :].strip()
-    if "</s>" in s:
-        s = s[: s.index("</s>")].strip()
-    if "alternative" in s.lower():
-        s = s[: s.lower().index("alternative")]
-    if "[IMG0]" in s:
-        s = s[: s.index("[IMG0]")]
-    s = ".".join([s.strip() for s in s.split(".")[:2]])
-    if s[-1] != ".":
-        s += "."
-    return s.strip()
+def remove_alter(prompt: str) -> str:  # hack expressive instruction
+    if "ASSISTANT:" in prompt:
+        prompt = prompt[prompt.index("ASSISTANT:") + 10 :].strip()
+    if "</s>" in prompt:
+        prompt = prompt[: prompt.index("</s>")].strip()
+    if "alternative" in prompt.lower():
+        prompt = prompt[: prompt.lower().index("alternative")]
+    if "[IMG0]" in prompt:
+        prompt = prompt[: prompt.index("[IMG0]")]
+    prompt = ".".join([s.strip() for s in prompt.split(".")[:2]])
+    if prompt[-1] != ".":
+        prompt += "."
+    return prompt.strip()

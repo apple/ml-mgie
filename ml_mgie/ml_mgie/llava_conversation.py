@@ -1,3 +1,4 @@
+# from https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/llava/conversation.py
 import dataclasses
 from enum import Enum, auto
 from typing import List
