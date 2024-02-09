@@ -2,7 +2,7 @@
 name = "ml-mgie"
 packages = [
     { include = "ml_mgie", from = "./ml_mgie" },
-    { include = "llava", from = "./LLaVa" },
+    # { include = "llava", from = "./LLaVa" },
 ]
 version = "v0.0.0"
 description = ""
