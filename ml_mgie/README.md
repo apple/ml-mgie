@@ -29,5 +29,5 @@ poetry run make tests
 
 ## Usage
 ```bash
-poetry run python -m ml_mgie.main --input_path _input/0.jpg --instruction "make the frame red" --output_path red_glasses.jpg
+poetry run python -m ml_mgie.main --input_path _input/0.jpg --instruction "make the frame red" --output_path red_glasses.jpg --max_size 512
 ```

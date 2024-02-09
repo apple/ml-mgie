@@ -29,6 +29,7 @@ class MGIEParams:
     seed: int = 13331
     cfg_txt: float = 7.5
     cfg_img: float = 1.5
+    max_size: int = 512
 
     @property
     def mllm_path(self) -> Path:
@@ -199,6 +200,7 @@ class MGIE:
         instruction: str, edition to perform on image
         """
         # Prepare inputs
+        image.thumbnail((self.params.max_size, self.params.max_size))
         img = self.prepare_img(image)
         prompt_tensor_ids, mask = self.prepare_prompt_id_and_mask(instruction)
         with torch.inference_mode():
