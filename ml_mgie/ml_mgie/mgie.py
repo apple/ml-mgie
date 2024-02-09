@@ -8,8 +8,10 @@ import transformers
 from PIL import Image
 
 from .base import DEFAULT_DEVICE
+
+# from .mgie_llava import LlavaLlamaForCausalLM
+from .llava import LlavaLlamaForCausalLM
 from .llava_conversation import conv_templates
-from .mgie_llava import LlavaLlamaForCausalLM
 from .utils import crop_resize
 
 # from llava.conversation import conv_templates
