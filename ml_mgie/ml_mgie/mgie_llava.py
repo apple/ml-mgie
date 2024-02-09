@@ -371,15 +371,11 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
         # Initialize weights and apply final processing
         self.post_init()
 
-    def get_model(self):
-        return self.model
+    def get_vision_tower(self):
+        return self.model.get_vision_tower()
 
     def get_vision_tower(self):
-        return self.get_model().get_vision_tower()
-
-    def get_vision_tower(self):
-        model = self.get_model()
-        vision_tower = model.vision_tower
+        vision_tower = self.model.vision_tower
         if type(vision_tower) is list:
             vision_tower = vision_tower[0]
         return vision_tower
@@ -589,7 +585,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
                 output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
             if tune_mm_mlp_adapter:
-                self.get_model().orig_embeds_params = [
+                self.model.orig_embeds_params = [
                     self.get_input_embeddings().weight.data.clone().to(device=device)
                 ]
                 for p in self.get_input_embeddings().parameters():

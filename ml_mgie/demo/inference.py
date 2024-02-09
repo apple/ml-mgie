@@ -3,15 +3,8 @@ import shutil
 from pathlib import Path
 
 import torch
-from ml_mgie.llava_conversation import conv_templates
-from ml_mgie.mgie import (
-    DEFAULT_IM_END_TOKEN,
-    DEFAULT_IM_START_TOKEN,
-    DEFAULT_IMAGE_PATCH_TOKEN,
-    MGIE,
-    MGIEParams,
-)
-from ml_mgie.utils import crop_resize, remove_alter
+from ml_mgie.mgie import MGIE, MGIEParams
+from ml_mgie.utils import remove_alter
 from PIL import Image
 from tqdm import tqdm
 
@@ -48,26 +41,12 @@ ins = [
 ]
 for i in tqdm(range(len(ins))):
     image_input_path = input_path / f"{i}.jpg"
-    img = crop_resize(Image.open(image_input_path).convert("RGB"))
+    image = Image.open(image_input_path).convert("RGB")
     instruction = ins[i]
 
-    img = mgie.image_processor.preprocess(img, return_tensors="pt")["pixel_values"][0]
-    prompt = f"what will this image be like if {instruction}"
-    prompt = (
-        prompt
-        + "\n"
-        + DEFAULT_IM_START_TOKEN
-        + DEFAULT_IMAGE_PATCH_TOKEN * mgie.image_token_len
-        + DEFAULT_IM_END_TOKEN
-    )
-    conv = conv_templates["vicuna_v1_1"].copy()
-    conv.append_message(conv.roles[0], prompt)
-    conv.append_message(conv.roles[1], None)
-    prompt = conv.get_prompt()
-    prompt_tokenized = mgie.tokenizer(prompt)
-    prompt_tensor_ids = torch.as_tensor(prompt_tokenized["input_ids"])
-    mask = torch.as_tensor(prompt_tokenized["attention_mask"])
-
+    # Prepare inputs
+    img = mgie.prepare_img(image)
+    prompt_tensor_ids, mask = mgie.prepare_prompt_id_and_mask(instruction)
     with torch.inference_mode():
         out = mgie.model.generate(
             prompt_tensor_ids.unsqueeze(dim=0).to(params.device),
@@ -80,6 +59,10 @@ for i in tqdm(range(len(ins))):
             return_dict_in_generate=True,
             output_hidden_states=True,
         )
+        import pdb
+
+        pdb.set_trace()
+        # Here out is nonesense: "Pres flash togful calledgot At commitilli split sent"
         out, hid = (
             out["sequences"][0].tolist(),
             torch.cat([x[-1] for x in out["hidden_states"]], dim=1)[0],
