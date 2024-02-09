@@ -24,7 +24,7 @@ DEFAULT_IM_END_TOKEN = "<im_end>"
 @dataclass
 class MGIEParams:
     device: torch.device = DEFAULT_DEVICE
-    dtype: torch.dtype = torch.float16
+    dtype: torch.dtype = torch.float32
     models_path: Path = Path("./data")
     seed: int = 13331
     cfg_txt: float = 7.5
