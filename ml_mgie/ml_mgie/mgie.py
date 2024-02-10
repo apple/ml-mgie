@@ -24,12 +24,18 @@ DEFAULT_IM_END_TOKEN = "<im_end>"
 @dataclass
 class MGIEParams:
     device: torch.device = DEFAULT_DEVICE
-    dtype: torch.dtype = torch.float32
+    half: bool = False
     models_path: Path = Path("./data")
     seed: int = 13331
     cfg_txt: float = 7.5
     cfg_img: float = 1.5
     max_size: int = 512
+
+    @property
+    def dtype(self) -> torch.dtype:
+        if self.half:
+            return torch.float16
+        return torch.float32
 
     @property
     def mllm_path(self) -> Path:
@@ -227,7 +233,7 @@ class MGIE:
 
             inner_thoughts = remove_alter(self.tokenizer.decode(out))
             emb = self.model.edit_head(hid.unsqueeze(dim=0), self.emb)
-            res: Image.Image = self.pipe(
+            result_image: Image.Image = self.pipe(
                 image=image,
                 prompt_embeds=emb,
                 negative_prompt_embeds=self.null,
@@ -237,4 +243,4 @@ class MGIE:
                 guidance_scale=self.params.cfg_txt,
                 image_guidance_scale=self.params.cfg_img,
             ).images[0]
-        return res, inner_thoughts
+        return result_image, inner_thoughts

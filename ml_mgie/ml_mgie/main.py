@@ -21,6 +21,7 @@ class MGIECommand:
     input_path: Path
     instruction: str
     output_path: Path
+    save_thumbnail: bool = False
     params: MGIEParams = MGIEParams()
 
     @cached_property
@@ -32,6 +33,11 @@ class MGIECommand:
             f"Running MGIE command with instruction: {self.instruction} onto image: {self.input_path}"
         )
         image = Image.open(self.input_path).convert("RGB")
+        if self.params.max_size:
+            image.thumbnail((self.params.max_size, self.params.max_size))
+            if self.save_thumbnail:
+                image.save(self.output_path.with_suffix(".thumb.jpg"))
+
         result_image, inner_thought = self.mgie.edit(
             image=image,
             instruction=self.instruction,

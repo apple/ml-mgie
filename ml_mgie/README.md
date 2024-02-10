@@ -11,7 +11,7 @@ poetry install
 ```
 
 ## Models download
-Temporary from unofficial [huggingface.co/paulasquin/ml-mgie](https://huggingface.co/paulasquin/ml-mgie) for simplification conveniance.
+Temporary from unofficial [huggingface.co/paulasquin/ml-mgie](https://huggingface.co/paulasquin/ml-mgie) for simplification convenience.
 ```bash
 git lfs install
 git clone https://huggingface.co/paulasquin/ml-mgie ./data
@@ -30,4 +30,8 @@ poetry run make tests
 ## Usage
 ```bash
 poetry run python -m ml_mgie.main --input_path _input/0.jpg --instruction "make the frame red" --output_path red_glasses.jpg --max_size 512
+```
+
+```bash
+poetry run python -m ml_mgie.app
 ```
