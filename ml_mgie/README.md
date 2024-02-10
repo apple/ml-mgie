@@ -1,7 +1,10 @@
 # ML-MGIE Packaging
 
-**Work In Progress**: refacto, package, simplify dependencies, make compatible with MPS, CUDA and CPU
-- by Paul Asquin
+Inference-oriented module  
+Added refacto, packaging, dependencies simplification, add compatibility with apple silicon  
+
+Package contributors:
+- [Paul Asquin](https://github.com/paulasquin)
 
 ## Installation 
 ```bash
@@ -19,7 +22,7 @@ git clone https://huggingface.co/paulasquin/ml-mgie ./data
 
 ## Demo
 ```bash
-poetry run python ml_mgie/demo/inference.py
+poetry run python ml_mgie/demo/demo.py
 ```
 
 ## Typing check and tests
@@ -31,7 +34,14 @@ poetry run make tests
 ```bash
 poetry run python -m ml_mgie.main --input_path _input/0.jpg --instruction "make the frame red" --output_path red_glasses.jpg --max_size 512
 ```
+Get more information on CLI using
+```bash
+poetry run python -m ml_mgie.main --help
+```
 
+## Gradio App
 ```bash
 poetry run python -m ml_mgie.app
 ```
+
+
