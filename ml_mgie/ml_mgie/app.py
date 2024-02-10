@@ -1,14 +1,10 @@
-import os
 from datetime import datetime
-from pathlib import Path
 
 import gradio as gr
 from ml_mgie.mgie import MGIE, MGIEParams
 from PIL import Image
 
-DEBUG_PATH = Path("debug")
-os.makedirs(DEBUG_PATH, exist_ok=True)
-mgie = MGIE(params=MGIEParams())
+mgie = MGIE(params=MGIEParams(half=True))
 
 
 def go_mgie(
@@ -18,22 +14,15 @@ def go_mgie(
     cfg_txt: float,
     cfg_img: float,
     max_size: int,
-    telemetry: bool,
 ):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    print(f"{timestamp} processing image with instruction: {instruction}")
+
     params = MGIEParams(seed=seed, cfg_txt=cfg_txt, cfg_img=cfg_img, max_size=max_size)
     mgie.params = params
-    name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    if telemetry:
-        image.save(DEBUG_PATH / f"{name}-in.jpg")
 
     image.thumbnail((params.max_size, params.max_size))
-    if telemetry:
-        image.save(DEBUG_PATH / f"{name}-thumb.jpg")
-
     result_image, inner_thoughts = mgie.edit(image=image, instruction=instruction)
-    if telemetry:
-        result_image.save(DEBUG_PATH / f"{name}-zout.jpg")
     return result_image, inner_thoughts
 
 
@@ -59,8 +48,7 @@ with gr.Blocks() as app:
             gr.Textbox(label="Expressive Instruction", interactive=False),
         ]
     with gr.Row():
-        telemetry, seed, cfg_txt, cfg_img, max_size = [
-            gr.Checkbox(label="Telemetry", value=True, interactive=True),
+        seed, cfg_txt, cfg_img, max_size = [
             gr.Number(value=42, label="Seed", interactive=True, precision=0),
             gr.Number(value=7.5, label="Text CFG", interactive=True),
             gr.Number(value=1.5, label="Image CFG", interactive=True),
@@ -78,7 +66,7 @@ with gr.Blocks() as app:
 
     btn_sub.click(
         fn=go_mgie,
-        inputs=[input_image, instruction, seed, cfg_txt, cfg_img, max_size, telemetry],
+        inputs=[input_image, instruction, seed, cfg_txt, cfg_img, max_size],
         outputs=[result_image, inner_thoughts],
         concurrency_limit=1,
     )

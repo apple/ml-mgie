@@ -6,10 +6,7 @@ from ml_mgie.mgie import MGIE, MGIEParams
 from PIL import Image
 from tqdm import tqdm
 
-SEED = 13331
-CFG_TXT = 7.5
-CFG_IMG = 1.5
-params = MGIEParams()
+params = MGIEParams(half=True, seed=13331, cfg_txt=7.5, cfg_img=1.5, max_size=512)
 mgie = MGIE(params=params)
 input_path = Path("_input")
 output_path = Path("_output")

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(
         prog="ml-mgie.main",
         description="""
-        ML-MGIE Rag: Guiding Instruction-based Image Editing via Multimodal Large Language Models.
+        ML-MGIE: Guiding Instruction-based Image Editing via Multimodal Large Language Models.
         """,
     )
     parser.add_arguments(Program, dest="program")

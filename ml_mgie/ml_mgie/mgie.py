@@ -24,8 +24,8 @@ DEFAULT_IM_END_TOKEN = "<im_end>"
 @dataclass
 class MGIEParams:
     device: torch.device = DEFAULT_DEVICE
-    half: bool = False
-    models_path: Path = Path("./data")
+    half: bool = True  # Weights are half precision by default
+    models_path: Path = Path("./data")  # Path to dir contaning mgie_7b and LLaVA-7B-v1
     seed: int = 13331
     cfg_txt: float = 7.5
     cfg_img: float = 1.5
@@ -67,6 +67,7 @@ class MGIE:
     def _set_model(self):
         transformers.logging.set_verbosity_error()
         # Prepare llava
+        tokenizer = transformers.AutoTokenizer.from_pretrained(self.params.llava_path)
         model = LlavaLlamaForCausalLM.from_pretrained(
             self.params.llava_path,
             torch_dtype=self.params.dtype,
@@ -79,7 +80,6 @@ class MGIE:
         )
 
         # Prepare tokenizer
-        tokenizer = transformers.AutoTokenizer.from_pretrained(self.params.llava_path)
         tokenizer.padding_side = "left"
         tokenizer.add_tokens(
             [
@@ -97,6 +97,12 @@ class MGIE:
         model.resize_token_embeddings(len(tokenizer))
         ckpt = torch.load(self.params.mllm_path, map_location="cpu")
         incompatible_keys = model.load_state_dict(ckpt, strict=False)
+        mm_use_im_start_end = getattr(model.config, "mm_use_im_start_end", False)
+        tokenizer.add_tokens([DEFAULT_IMAGE_PATCH_TOKEN], special_tokens=True)
+        if mm_use_im_start_end:
+            tokenizer.add_tokens(
+                [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True
+            )
         transformers.logging.set_verbosity_warning()
 
         # Patch model
@@ -107,21 +113,15 @@ class MGIE:
         model.edit_head = model.edit_head.to(
             self.params.device, dtype=self.params.dtype
         )
-        mm_use_im_start_end = getattr(model.config, "mm_use_im_start_end", False)
-        tokenizer.add_tokens([DEFAULT_IMAGE_PATCH_TOKEN], special_tokens=True)
-        if mm_use_im_start_end:
-            tokenizer.add_tokens(
-                [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True
-            )
 
         # Patch CLIP
         vision_tower = model.get_vision_tower()
         vision_tower = transformers.CLIPVisionModel.from_pretrained(
             vision_tower.config._name_or_path,
             torch_dtype=self.params.dtype,
-            low_cpu_mem_usage=True,
         ).to(self.params.device)
         model.model.vision_tower[0] = vision_tower
+
         # Patch CLIP config
         vision_config = vision_tower.config
         vision_config.im_patch_token = tokenizer.convert_tokens_to_ids(
@@ -136,6 +136,7 @@ class MGIE:
                 [DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN]
             )
         image_token_len = (vision_config.image_size // vision_config.patch_size) ** 2
+        _ = model.eval()
 
         # Prepare placeholders
         emb = ckpt["emb"].to(self.params.device, dtype=self.params.dtype)
@@ -147,17 +148,18 @@ class MGIE:
 
         # Prepare diffusion pipeline
         pipe = diffusers.StableDiffusionInstructPix2PixPipeline.from_pretrained(
-            "timbrooks/instruct-pix2pix", safety_checker=None
+            "timbrooks/instruct-pix2pix",
+            torch_dtype=self.params.dtype,
+            safety_checker=None,
         )
         pipe.set_progress_bar_config(disable=True)
         pipe.unet.load_state_dict(
-            torch.load(self.params.unet_path.absolute(), map_location="cpu"),
+            torch.load(self.params.unet_path, map_location="cpu"),
             strict=True,
         )
-        pipe = pipe.to(device=self.params.device, dtype=self.params.dtype)
+        pipe = pipe.to(device=self.params.device)
 
         # Set attributes
-        model.eval()
         self.model = model
         self.tokenizer = tokenizer
         self.image_processor = image_processor
@@ -200,6 +202,7 @@ class MGIE:
         )
         return prompt_tensor_ids, mask
 
+    @torch.inference_mode()
     def edit(self, image: Image.Image, instruction: str) -> Tuple[Image.Image, str]:
         """
         image: PIL.Image.Image, Pillow RGB image
@@ -210,37 +213,36 @@ class MGIE:
             image.thumbnail((self.params.max_size, self.params.max_size))
         img = self.prepare_img(image)
         prompt_tensor_ids, mask = self.prepare_prompt_id_and_mask(instruction)
-        with torch.inference_mode():
-            out = self.model.generate(
-                prompt_tensor_ids.unsqueeze(dim=0),
-                images=img.unsqueeze(dim=0),
-                attention_mask=mask.unsqueeze(dim=0),
-                do_sample=False,
-                max_new_tokens=96,
-                num_beams=1,
-                no_repeat_ngram_size=3,
-                return_dict_in_generate=True,
-                output_hidden_states=True,
-            )
+        out = self.model.generate(
+            prompt_tensor_ids.unsqueeze(dim=0),
+            images=img.unsqueeze(dim=0),
+            attention_mask=mask.unsqueeze(dim=0),
+            do_sample=False,
+            max_new_tokens=96,
+            num_beams=1,
+            no_repeat_ngram_size=3,
+            return_dict_in_generate=True,
+            output_hidden_states=True,
+        )
 
-            out, hid = (
-                out["sequences"][0].tolist(),
-                torch.cat([x[-1] for x in out["hidden_states"]], dim=1)[0],
-            )
-            p = out.index(32003) - 1 if 32003 in out else len(hid) - 9
-            p = min(p, len(hid) - 9)
-            hid = hid[p : p + 8]
+        out, hid = (
+            out["sequences"][0].tolist(),
+            torch.cat([x[-1] for x in out["hidden_states"]], dim=1)[0],
+        )
+        p = out.index(32003) - 1 if 32003 in out else len(hid) - 9
+        p = min(p, len(hid) - 9)
+        hid = hid[p : p + 8]
 
-            inner_thoughts = remove_alter(self.tokenizer.decode(out))
-            emb = self.model.edit_head(hid.unsqueeze(dim=0), self.emb)
-            result_image: Image.Image = self.pipe(
-                image=image,
-                prompt_embeds=emb,
-                negative_prompt_embeds=self.null,
-                generator=torch.Generator(device=self.params.device).manual_seed(
-                    self.params.seed
-                ),
-                guidance_scale=self.params.cfg_txt,
-                image_guidance_scale=self.params.cfg_img,
-            ).images[0]
+        inner_thoughts = remove_alter(self.tokenizer.decode(out))
+        embedding = self.model.edit_head(hid.unsqueeze(dim=0), self.emb)
+        result_image: Image.Image = self.pipe(
+            image=image,
+            prompt_embeds=embedding,
+            negative_prompt_embeds=self.null,
+            generator=torch.Generator(device=self.params.device).manual_seed(
+                self.params.seed
+            ),
+            guidance_scale=self.params.cfg_txt,
+            image_guidance_scale=self.params.cfg_img,
+        ).images[0]
         return result_image, inner_thoughts
