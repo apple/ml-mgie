@@ -46,7 +46,6 @@ with gr.Blocks() as app:
             gr.Image(
                 label="Input Image",
                 interactive=True,
-                height="500px",
                 type="pil",
                 image_mode="RGB",
             ),
