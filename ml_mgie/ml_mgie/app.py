@@ -39,13 +39,13 @@ with gr.Blocks() as app:
                 image_mode="RGB",
             ),
             gr.Image(
-                label="Goal Image", type="pil", interactive=False, image_mode="RGB"
+                label="Generated Image", type="pil", interactive=False, image_mode="RGB"
             ),
         ]
     with gr.Row():
         instruction, inner_thoughts = [
             gr.Textbox(label="Instruction", interactive=True),
-            gr.Textbox(label="Expressive Instruction", interactive=False),
+            gr.Textbox(label="Inner thoughts", interactive=False),
         ]
     with gr.Row():
         seed, cfg_txt, cfg_img, max_size = [
@@ -57,7 +57,7 @@ with gr.Blocks() as app:
                 maximum=1024,
                 value=512,
                 precision=0,
-                label="Maximum Size",
+                label="Maximum image size",
                 interactive=True,
             ),
         ]
