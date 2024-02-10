@@ -1,0 +1,31 @@
+repos:
+-   repo: https://github.com/myint/autoflake
+    rev: v1.4
+    hooks:
+    -   id: autoflake
+        name: autoflake
+        entry: autoflake --in-place --remove-all-unused-imports --ignore-init-module-imports
+        language: python
+
+-   repo: https://github.com/ambv/black
+    rev: 23.1.0
+    hooks:
+    -  id: black
+       files: \.py$
+
+-   repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+    -   id: isort
+        args: ["--profile", "black"]
+        files: \.py$
+
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    -   id: check-yaml
+        args: ['--unsafe']
+    -   id: end-of-file-fixer
+        files: \.py$
+    -   id: trailing-whitespace
+        files: \.py$

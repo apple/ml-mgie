@@ -7,7 +7,6 @@
 import os
 from typing import List, Optional, Tuple, Union
 
-import diffusers
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
@@ -29,10 +28,11 @@ DEFAULT_IMAGE_TOKEN = "<image>"
 DEFAULT_IMAGE_PATCH_TOKEN = "<im_patch>"
 DEFAULT_IM_START_TOKEN = "<im_start>"
 DEFAULT_IM_END_TOKEN = "<im_end>"
+REGISTER_NAME = "llava"
 
 
 class LlavaConfig(LlamaConfig):
-    model_type = "llava"
+    model_type = REGISTER_NAME
 
 
 class LlavaLlamaModel(LlamaModel):
@@ -340,7 +340,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         self.edit_head = EditMapper()
-
+        """
         self.scheduler, self.vae, self.unet = [
             diffusers.DDPMScheduler.from_pretrained(
                 "runwayml/stable-diffusion-v1-5", subfolder="scheduler"
@@ -365,19 +365,15 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
             conv.weight.zero_()
             conv.weight[:, :4, :, :].copy_(self.unet.conv_in.weight)
             self.unet.conv_in = conv
-
+        """
         # Initialize weights and apply final processing
         self.post_init()
 
-    def get_model(self):
-        return self.model
+    def get_vision_tower(self):
+        return self.model.get_vision_tower()
 
     def get_vision_tower(self):
-        return self.get_model().get_vision_tower()
-
-    def get_vision_tower(self):
-        model = self.get_model()
-        vision_tower = model.vision_tower
+        vision_tower = self.model.vision_tower
         if type(vision_tower) is list:
             vision_tower = vision_tower[0]
         return vision_tower
@@ -587,7 +583,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
                 output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
             if tune_mm_mlp_adapter:
-                self.get_model().orig_embeds_params = [
+                self.model.orig_embeds_params = [
                     self.get_input_embeddings().weight.data.clone().to(device=device)
                 ]
                 for p in self.get_input_embeddings().parameters():
@@ -617,5 +613,5 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM):
         )[0]
 
 
-AutoConfig.register("llava", LlavaConfig)
-AutoModelForCausalLM.register(LlavaConfig, LlavaLlamaForCausalLM)
+AutoConfig.register(REGISTER_NAME, LlavaConfig, exist_ok=True)
+AutoModelForCausalLM.register(LlavaConfig, LlavaLlamaForCausalLM, exist_ok=True)
